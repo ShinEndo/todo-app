@@ -9,42 +9,143 @@ interface ToDo {
 
 
 function App() {
-  const [title, setTitle] = useState("");
   const [todos, setTodos] = useState<ToDo[]>([]);
+  const [title, setTitle] = useState("");
+  const [error, setError] = useState("");
 
-  // useEffectでデータを取得するのはアンチパターンだが、簡略化のため
-  useEffect(() => {
-    fetchTodos();
-  }, []);
-
+  // データの取得（GET）
   const fetchTodos = async () => {
-    const response = await fetch("http://localhost:3000/todos");
-    const data = await response.json();
-    setTodos(data.todos);
-  }
-
-  const handleAddTodo = () => {
-    if (title.trim()) {
-      setTodos([...todos, { id: todos.length + 1, title, completed: false }]);
-      setTitle("");
+    try {
+      const response = await fetch("http://localhost:3000/todos");
+      if(!response.ok) throw new Error('データの取得に失敗しました');
+      const data = await response.json();
+      setTodos(data.todos);
+    } catch(err) {
+      console.log(err);
+      setError('サーバーに接続できません');
     }
   }
 
-  const handleToggleTodo = (id: number) => {
-    setTodos(
-      todos.map(todo => todo.id === id ? {...todo, completed : !todo.completed} : todo)
-    );
+  useEffect(() => {
+     // useEffectでデータを取得するのはアンチパターンだが、簡略化のため
+    fetchTodos();
+  }, []);
+
+  // データの追加（POST)
+  const handleAddTodo = async () => {
+    if(!title.trim()) return;
+
+    try {
+      const response = await fetch("http://localhost:3000/todos", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify( {title: title} )
+      });
+
+      if(response.ok) {
+        await fetchTodos();
+        setTitle("");
+        setError("");
+      } else {
+        throw new Error("保存に失敗しました");
+      }
+    } catch(err) {
+      setError("送信エラー: サーバーが起動しているか確認してください");
+    }
+    
+  }
+
+  // データの更新（PUT）
+  const handleToggleTodo = async (id: number) => {
+    const todoToUpdate = todos.find(todo => todo.id === id);
+    if (!todoToUpdate) return;
+
+    const updatedTodo = { ...todoToUpdate, completed: !todoToUpdate.completed };
+
+    try {
+      const response = await fetch(`http://localhost:3000/todos/${id}`,{
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedTodo),
+      });
+
+      if(response.ok) {
+        setTodos(
+          todos.map(todo => todo.id === id ? {...todo, completed : !todo.completed} : todo)
+        );
+      } else {
+        throw new Error('ステータスの更新に失敗しました')
+      }
+    } catch(err) {
+      setError('更新エラー：サーバーとの通信に失敗しました');
+    }
+  }
+
+  // データの削除（DELETE）
+  const handleDeleteTodo = async (id: number) => {
+
+    if (!window.confirm("このタスクを削除しますか？")) return;
+
+    const todoToDelete = todos.find(todo => todo.id === id);
+    if (!todoToDelete) return;
+
+    try {
+      const response = await fetch(`http://localhost:3000/todos/${id}`,{
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if(response.ok) {
+        setTodos(todos.filter(todo => todo.id !== id));
+      } else {
+        throw new Error('削除に失敗しました')
+      }
+    } catch(err) {
+        setError('削除エラー：サーバーとの通信に失敗しました');
+      }
+  }
+
+  // 全件削除（DELETE）
+  const handleAllDeleteTodo = async () => {
+
+    if (!window.confirm("すべてのタスクを削除してもよろしいですか？")) return;
+
+    try {
+      const response = await fetch("http://localhost:3000/todos", {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setTodos([]);
+        setError("");
+      } else {
+          throw new Error("一括削除に失敗しました");
+      }
+    } catch (err) {
+      setError("通信エラー：サーバーを確認してください");
+    }
   }
 
   return (
     <>
-    <div className='h-screen max-h-screen flex items-center justify-center'>
-      <div className='card bg-base-100 w-full max-w-md shrink-0 shadow-2xl'>
+    <div className='h-screen max-h-screen flex items-center justify-center bg-base-200'>
+      <div className='card bg-white w-full max-w-md shrink-0 shadow-2xl'>
         <div className="card-body">
           <h1 className="card-title">Todo アプリ</h1>
-          <div className='flex gap-2'>
+          {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4 text-sm">
+            {error}
+          </div>
+          )}
+          <div className='flex justify-between w-full'>
             <input
-              className="input"
+              className="input bg-white"
               type="text"
               name="title"
               placeholder='新しいタスクを入力...'
@@ -53,7 +154,7 @@ function App() {
               onChange={ e => setTitle(e.target.value)}
             />
             <button
-              className="btn"
+              className="btn btn-neutral"
               onClick={handleAddTodo}
             >
             追加
@@ -67,13 +168,14 @@ function App() {
                   <p className="text-sm">新しいタスクを追加してください</p>
                 </div>
               ) : (
-                <ul className='flex flex-col gap-y-1'>
+                <ul className='flex flex-col gap-y-2.5'>
                   {todos.map(todo => (
-                    <li key={todo.id}>
+                    <li key={todo.id} className='flex items-center justify-between'>
                       <label className="label">
                         <input type="checkbox" className="checkbox" checked={todo.completed} onChange={() => handleToggleTodo(todo.id) } />
                         <span className={`flex-1 ${todo.completed ? "line-through text-gray-500" : "text-gray-800"}`}>{todo.title}</span>
                       </label>
+                      <button className='btn btn-sm btn-outline' onClick={() => handleDeleteTodo(todo.id)}>削除</button>
                     </li>
                   ))}
                 </ul>
@@ -81,11 +183,12 @@ function App() {
             }
           </div>
           {todos.length > 0 && (
-            <div className="mt-2.5 pt-4 border-t border-gray-200">
-              <p className="text-sm text-center">
+            <div className="flex justify-between items-center mt-2.5 pt-4 border-t border-gray-200">
+              <p className="text-sm ">
                 完了済み: {todos.filter((todo) => todo.completed).length} /{" "}
                 {todos.length}
               </p>
+              <button className="btn btn-sm btn-soft" onClick={handleAllDeleteTodo}>全件削除</button>
             </div>
           )}
         </div>

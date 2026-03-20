@@ -46,6 +46,20 @@ app.put("/todos/:id", async (c) => {
   return c.json({ todo });
 });
 
+app.delete("/todos/:id", async (c) => {
+  const { id } = c.req.param();
+  const index = todos.findIndex(todo => todo.id === Number(id));
+  if(index === -1) return c.notFound();
+  todos.splice(index, 1);
+  return c.json({ message: "Deleted", id: id });
+
+});
+
+app.delete("/todos", (c) => {
+  todos.length = 0; 
+  return c.json({ message: "All todos deleted" });
+});
+
 serve({
   fetch: app.fetch,
   port: 3000
