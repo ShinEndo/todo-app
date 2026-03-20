@@ -1,63 +1,83 @@
 import { serve } from '@hono/node-server'
+import { PrismaClient } from '@prisma/client'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 
-interface ToDo {
-  id: number;
-  title: string;
-  completed: boolean;
-}
-
-const todos: ToDo[] = [];
-
+const prisma = new PrismaClient()
 const app = new Hono()
 
 app.use(
+  '/*',
   cors({
-    origin: "http://localhost:5173",
+    origin: 'http://localhost:5173',
   })
 )
 
-app.get('/', (c) => {
-  return c.text('Hello Hono!')
+// 1. 全件取得 (GET)
+app.get('/todos', async (c) => {
+  try {
+    const todos = await prisma.todo.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    return c.json({ todos });
+  } catch (error) {
+    return c.json({ error: "取得に失敗しました" }, 500);
+  }
 })
 
-app.get('/todos', (c) => {
-  return c.json({ todos });
-})
-
+// 2. 新規作成 (POST)
 app.post('/todos', async (c) => {
-  const { title } = await c.req.json();
-  const todo: ToDo = {
-    id: todos.length + 1,
-    title,
-    completed: false,
-  };
-  todos.push(todo);
-  return c.json({ todos });
+  try {
+    const { title } = await c.req.json();
+    const newTodo = await prisma.todo.create({
+      data: {
+        title,
+        completed: false,
+      },
+    });
+    return c.json(newTodo, 201);
+  } catch (error) {
+    return c.json({ error: "保存に失敗しました" }, 500);
+  }
 })
 
+// 3. 更新 (PUT) - 完了状態の切り替え
 app.put("/todos/:id", async (c) => {
-  const { id } = c.req.param();
-  const { completed } = await c.req.json();
-  const todo = todos.find(todo => todo.id === Number(id));
-  if(!todo) return c.notFound();
-  todo.completed = completed;
-  return c.json({ todo });
+  try {
+    const id = Number(c.req.param('id'));
+    const { completed } = await c.req.json();
+    
+    const updatedTodo = await prisma.todo.update({
+      where: { id },
+      data: { completed },
+    });
+    return c.json(updatedTodo);
+  } catch (error) {
+    return c.json({ error: "更新に失敗しました" }, 404);
+  }
 });
 
+// 4. 個別削除 (DELETE)
 app.delete("/todos/:id", async (c) => {
-  const { id } = c.req.param();
-  const index = todos.findIndex(todo => todo.id === Number(id));
-  if(index === -1) return c.notFound();
-  todos.splice(index, 1);
-  return c.json({ message: "Deleted", id: id });
-
+  try {
+    const id = Number(c.req.param('id'));
+    await prisma.todo.delete({
+      where: { id },
+    });
+    return c.json({ message: "Deleted", id });
+  } catch (error) {
+    return c.json({ error: "削除に失敗しました" }, 404);
+  }
 });
 
-app.delete("/todos", (c) => {
-  todos.length = 0; 
-  return c.json({ message: "All todos deleted" });
+// 5. 全削除 (DELETE)
+app.delete("/todos", async (c) => {
+  try {
+    await prisma.todo.deleteMany(); // SQL の TRUNCATE または DELETE FROM に相当
+    return c.json({ message: "All todos deleted" });
+  } catch (error) {
+    return c.json({ error: "全削除に失敗しました" }, 500);
+  }
 });
 
 serve({

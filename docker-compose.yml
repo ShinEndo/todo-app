@@ -16,6 +16,26 @@ services:
     container_name: api
     ports:
       - "3000:3000"
+      - "5555:5555" # npx prisma studio
     volumes:
       - ./todo-api:/app
       - /app/node_modules
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/todo_db?schema=public
+  db:
+      image: postgres:15-alpine
+      container_name: todo-db
+      restart: always
+      environment:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: password
+        POSTGRES_DB: todo_db
+      ports:
+        - "5433:5432" # 5432を別プロジェクトで使用しているため
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
