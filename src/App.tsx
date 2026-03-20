@@ -1,40 +1,33 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
+
+interface ToDo {
+  id: number;
+  title: string;
+  completed: boolean;
+};
+
 
 function App() {
   const [title, setTitle] = useState("");
-  const [todos, setTodos] = useState([
-    {
-      id :1,
-      title: "Todo 1",
-      completed: false
-    },
-    {
-      id: 2,
-      title: "Todo 2",
-      completed: false,
-    },
-    {
-      id: 3,
-      title: "Todo 3",
-      completed: false
-    }
-  ]
+  const [todos, setTodos] = useState<ToDo[]>([]);
 
-  );
+  // useEffectでデータを取得するのはアンチパターンだが、簡略化のため
+  useEffect(() => {
+    fetchTodos();
+  }, []);
+
+  const fetchTodos = async () => {
+    const response = await fetch("http://localhost:3000/todos");
+    const data = await response.json();
+    setTodos(data.todos);
+  }
 
   const handleAddTodo = () => {
-    if(title !== "") {
-      setTodos([
-        ...todos,
-        {
-          id: todos.length + 1,
-          title: title,
-          completed: false,
-        }
-      ]);
+    if (title.trim()) {
+      setTodos([...todos, { id: todos.length + 1, title, completed: false }]);
+      setTitle("");
     }
-    setTitle("");
   }
 
   const handleToggleTodo = (id: number) => {
