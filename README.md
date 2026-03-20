@@ -71,3 +71,7 @@ export default defineConfig([
   },
 ])
 ```
+## コマンド
+```
+docker run --rm --name my-container -p 5173:5173 tutorial
+```
