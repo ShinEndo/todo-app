@@ -75,3 +75,15 @@ export default defineConfig([
 ```
 docker run --rm --name my-container -p 5173:5173 tutorial
 ```
+ビルドしてバックグラウンド起動
+```
+docker compose up -d --build
+```
+データベースの初期化
+```
+docker compose exec api npx prisma migrate dev --name init
+```
+ログの監視
+```
+docker compose logs -f
+```

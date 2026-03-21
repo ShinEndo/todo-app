@@ -1,5 +1,5 @@
 {
-  "name": "todo-api",
+  "name": "api",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -7,6 +7,8 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@clerk/clerk-sdk-node": "^4.13.23",
+    "@hono/clerk-auth": "^3.1.0",
     "@hono/node-server": "^1.19.11",
     "@prisma/client": "^6.19.2",
     "hono": "^4.12.8"
