@@ -15,6 +15,7 @@ datasource db {
 
 model Todo {
   id        Int      @id @default(autoincrement())
+  userId    String   // Clerk のユーザーID
   title     String
   completed Boolean  @default(false)
   createdAt DateTime @default(now())

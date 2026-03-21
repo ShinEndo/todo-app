@@ -12,17 +12,21 @@ services:
       - /app/node_modules
 
   api:
-    build: ./todo-api
+    build: ./api
     container_name: api
     ports:
       - "3000:3000"
       - "5555:5555" # npx prisma studio
     volumes:
-      - ./todo-api:/app
+      - ./api:/app
       - /app/node_modules
     depends_on:
       - db
+    env_file:
+      - .env
     environment:
+      - CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - DATABASE_URL=postgresql://postgres:password@db:5432/todo_db?schema=public
   db:
       image: postgres:15-alpine
