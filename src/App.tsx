@@ -7,6 +7,7 @@ import {
   SignInButton, 
   UserButton 
 } from '@clerk/clerk-react';
+import { useApi } from './hooks/useApi';
 
 interface ToDo {
   id: number;
@@ -15,6 +16,7 @@ interface ToDo {
 };
 
 function App() {
+  const api = useApi();
   const { getToken } = useAuth();
   const [todos, setTodos] = useState<ToDo[]>([]);
   const [title, setTitle] = useState("");
@@ -23,17 +25,9 @@ function App() {
   // データの取得（GET）
   const fetchTodos = async () => {
     try {
-      const token = await getToken();
-      const response = await fetch("http://localhost:3000/todos", {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if(!response.ok) throw new Error('データの取得に失敗しました');
-      const data = await response.json();
+      const data = await api.get("/todos");
       setTodos(data.todos);
     } catch(err) {
-      console.log(err);
       setError('サーバーに接続できません');
     }
   }
@@ -48,23 +42,10 @@ function App() {
     if(!title.trim()) return;
 
     try {
-      const token = await getToken();
-      const response = await fetch("http://localhost:3000/todos", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify( {title: title} )
-      });
-
-      if(response.ok) {
-        await fetchTodos();
-        setTitle("");
-        setError("");
-      } else {
-        throw new Error("保存に失敗しました");
-      }
+      await api.post("/todos", {title});
+      await fetchTodos();
+      setError("");
+      setTitle("");
     } catch(err) {
       setError("送信エラー: サーバーが起動しているか確認してください");
     }
@@ -76,26 +57,13 @@ function App() {
     const todoToUpdate = todos.find(todo => todo.id === id);
     if (!todoToUpdate) return;
 
-    const updatedTodo = { ...todoToUpdate, completed: !todoToUpdate.completed };
-
     try {
-      const token = await getToken();
-      const response = await fetch(`http://localhost:3000/todos/${id}`,{
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedTodo),
-      });
+      await api.put(`/todos/${id}`, { 
+        ...todoToUpdate,
+        completed: !todoToUpdate.completed
+       });
+      setTodos(todos.map(todo => todo.id === id ? {...todo, completed : !todo.completed} : todo));
 
-      if(response.ok) {
-        setTodos(
-          todos.map(todo => todo.id === id ? {...todo, completed : !todo.completed} : todo)
-        );
-      } else {
-        throw new Error('ステータスの更新に失敗しました')
-      }
     } catch(err) {
       setError('更新エラー：サーバーとの通信に失敗しました');
     }
@@ -110,20 +78,8 @@ function App() {
     if (!todoToDelete) return;
 
     try {
-      const token = await getToken();
-      const response = await fetch(`http://localhost:3000/todos/${id}`,{
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-      });
-
-      if(response.ok) {
-        setTodos(todos.filter(todo => todo.id !== id));
-      } else {
-        throw new Error('削除に失敗しました')
-      }
+      await api.delete(`/todos/${id}`);
+      setTodos(todos.filter(todo => todo.id !== id));
     } catch(err) {
         setError('削除エラー：サーバーとの通信に失敗しました');
       }
@@ -135,20 +91,9 @@ function App() {
     if (!window.confirm("すべてのタスクを削除してもよろしいですか？")) return;
 
     try {
-      const token = await getToken();
-      const response = await fetch("http://localhost:3000/todos", {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        setTodos([]);
-        setError("");
-      } else {
-          throw new Error("一括削除に失敗しました");
-      }
+      await api.delete("/todos");
+      setTodos([]);
+      setError("");
     } catch (err) {
       setError("通信エラー：サーバーを確認してください");
     }
