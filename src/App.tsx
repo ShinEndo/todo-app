@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import { 
-  useAuth, 
   SignedIn, 
   SignedOut, 
   SignInButton, 
@@ -17,7 +16,6 @@ interface ToDo {
 
 function App() {
   const api = useApi();
-  const { getToken } = useAuth();
   const [todos, setTodos] = useState<ToDo[]>([]);
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
